@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Pilot Fasting Tool (MY)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
+    <style>
+        body { touch-action: manipulation; }
+        .status-box { transition: all 0.5s ease; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white font-sans h-screen flex flex-col">
+
+    <div class="p-4 bg-gray-800 border-b border-gray-700 flex justify-between items-center">
+        <h1 class="text-lg font-bold text-gray-200">✈️ Pilot Iftar/Sahur</h1>
+        <div id="gps-indicator" class="px-2 py-1 rounded text-xs bg-red-600">NO GPS</div>
+    </div>
+
+    <div id="main-display" class="flex-grow flex flex-col justify-center items-center p-6 text-center status-box bg-gray-800">
+        <p class="text-gray-400 text-sm uppercase tracking-widest mb-2">Current Status</p>
+        <h2 id="status-text" class="text-5xl font-black mb-4">WAITING...</h2>
+        <p id="sub-text" class="text-xl text-gray-300">Acquiring Location...</p>
+        
+        <div class="grid grid-cols-2 gap-4 mt-8 w-full max-w-md">
+            <div class="bg-gray-700 p-3 rounded">
+                <p class="text-xs text-gray-400">Altitude</p>
+                <p id="alt-display" class="text-xl font-mono">--- ft</p>
+            </div>
+            <div class="bg-gray-700 p-3 rounded">
+                <p class="text-xs text-gray-400">Sun Elevation</p>
+                <p id="sun-display" class="text-xl font-mono">---°</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="manual-panel" class="hidden p-4 bg-gray-800 border-t border-gray-700">
+        <label class="text-sm text-gray-400">Manual Flight Level (Pressure Alt)</label>
+        <div class="flex gap-2 mt-2">
+            <input type="number" id="manual-alt" placeholder="e.g. 380" class="w-full p-3 bg-gray-900 rounded text-white font-mono border border-gray-600">
+            <button onclick="toggleManualMode()" class="bg-blue-600 px-6 rounded font-bold">SET</button>
+        </div>
+    </div>
+
+    <div class="p-4 bg-gray-900 border-t border-gray-800 flex justify-between">
+        <button onclick="toggleManualInput()" class="text-gray-500 text-sm underline">Manual Input</button>
+        <div class="text-xs text-gray-600 text-right">
+            JAKIM Std (20°)<br>Safe Buffer: 2 min
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const JAKIM_FAJR_ANGLE = 20.0; // Degrees
+        const SUN_RADIUS_REFRACTION = 0.833;
+        const EARTH_RADIUS_M = 6371000;
+        
+        // State
+        let currentAltFt = 0;
+        let manualMode = false;
+        let lastFixTime = 0;
+
+        // --- MATH FUNCTIONS ---
+        function calculateDip(altitudeFt) {
+            if (altitudeFt <= 0) return 0;
+            const h = altitudeFt * 0.3048; // meters
+            const cosDip = EARTH_RADIUS_M / (EARTH_RADIUS_M + h);
+            return (Math.acos(cosDip) * 180 / Math.PI); // degrees
+        }
+
+        function updateStatus(lat, lon, altFt) {
+            const now = new Date();
+            const sunPos = SunCalc.getPosition(now, lat, lon);
+            const sunDeg = sunPos.altitude * 180 / Math.PI; // Convert radians to degrees
+            const dip = calculateDip(altFt);
+
+            // Thresholds (Negative values mean below horizon)
+            // Iftar: Sun must be lower than (Horizon - Dip)
+            // We ADD a safety margin effectively by requiring it to be even lower? 
+            // Actually, for "Time", we add minutes. For "Live Angle", we keep strict geometry 
+            // but the pilots should wait 2 mins after this turns Green.
+            
+            const iftarThreshold = -(SUN_RADIUS_REFRACTION + dip);
+            const sahurThreshold = -(JAKIM_FAJR_ANGLE + dip);
+
+            // UI Elements
+            const statusBox = document.getElementById('main-display');
+            const statusText = document.getElementById('status-text');
+            const subText = document.getElementById('sub-text');
+            
+            document.getElementById('alt-display').innerText = Math.round(altFt).toLocaleString() + " ft";
+            document.getElementById('sun-display').innerText = sunDeg.toFixed(2) + "°";
+
+            // LOGIC
+            if (sunDeg > iftarThreshold) {
+                // DAYTIME (Fast)
+                statusBox.className = "flex-grow flex flex-col justify-center items-center p-6 text-center status-box bg-red-900";
+                statusText.innerText = "FASTING";
+                subText.innerText = `Sun is visible above horizon (${(sunDeg - iftarThreshold).toFixed(2)}° clearance)`;
+            } else if (sunDeg < sahurThreshold) {
+                // NIGHT (Eat)
+                statusBox.className = "flex-grow flex flex-col justify-center items-center p-6 text-center status-box bg-green-900";
+                statusText.innerText = "NIGHT";
+                subText.innerText = "Safe to eat/drink";
+            } else {
+                // TWILIGHT ZONE (Maghrib or Fajr transition)
+                statusBox.className = "flex-grow flex flex-col justify-center items-center p-6 text-center status-box bg-yellow-700";
+                statusText.innerText = "TRANSITION";
+                subText.innerText = "Verify visually. Sun is in twilight zone.";
+            }
+        }
+
+        // --- GPS HANDLER ---
+        function startGPS() {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.watchPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        // Use GPS altitude if available, otherwise fallback or 0
+                        // Note: GPS altitude on mobile can be inaccurate, but better than 0
+                        // For pilots, Manual Input is often safer for Altitude.
+                        let alt = position.coords.altitude ? (position.coords.altitude * 3.28084) : 0;
+                        
+                        if (manualMode) alt = currentAltFt;
+                        else currentAltFt = alt;
+
+                        // Update UI
+                        document.getElementById('gps-indicator').className = "px-2 py-1 rounded text-xs bg-green-600";
+                        document.getElementById('gps-indicator').innerText = "GPS OK";
+                        
+                        updateStatus(lat, lon, currentAltFt);
+                    },
+                    (error) => {
+                        document.getElementById('gps-indicator').className = "px-2 py-1 rounded text-xs bg-red-600";
+                        document.getElementById('gps-indicator').innerText = "GPS LOST";
+                    },
+                    { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 }
+                );
+            }
+        }
+
+        // --- MANUAL OVERRIDE ---
+        function toggleManualInput() {
+            document.getElementById('manual-panel').classList.toggle('hidden');
+        }
+
+        function toggleManualMode() {
+            const input = document.getElementById('manual-alt').value;
+            if (input) {
+                manualMode = true;
+                currentAltFt = parseInt(input) * 100; // Convert Flight Level to Feet (FL380 -> 38000)
+                document.getElementById('alt-display').style.color = "yellow"; // Indicate manual
+                toggleManualInput();
+            }
+        }
+
+        // Init
+        startGPS();
+        
+        // Prevent screen sleep (Basic method, works on some browsers)
+        if ('wakeLock' in navigator) {
+            navigator.wakeLock.request('screen').catch(err => console.log(err));
+        }
+    </script>
+</body>
+</html>
