@@ -4,15 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Pilot Fasting Tool (Manual)</title>
+    <title>Pilot Fasting Tool (Legs)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
     <style>
         body { touch-action: manipulation; background-color: #0f172a; }
-        /* Custom Toggle Switch */
         .toggle-checkbox:checked { right: 0; border-color: #68D391; }
-        .toggle-checkbox:checked + .toggle-label { background-color: #68D391; }
-        input[type=number] { -moz-appearance: textfield; }
     </style>
 </head>
 <body class="text-white font-sans h-screen flex flex-col overflow-hidden">
@@ -20,9 +17,8 @@
     <div class="p-3 bg-gray-800 border-b border-gray-700 flex justify-between items-center shadow-md z-10">
         <div>
             <h1 class="text-sm font-bold text-gray-200 uppercase tracking-wide">✈️ Iftar Ops</h1>
-            <p class="text-[10px] text-gray-500">JAKIM (20°) | Buffer ±2m</p>
+            <p class="text-[10px] text-gray-500">JAKIM (20°) | Smart Predict</p>
         </div>
-        
         <div class="flex items-center bg-gray-900 rounded-lg p-1 border border-gray-600">
             <button onclick="setMode('GPS')" id="btn-gps" class="px-3 py-1 text-xs font-bold rounded bg-blue-600 text-white transition-all">GPS</button>
             <button onclick="setMode('MANUAL')" id="btn-man" class="px-3 py-1 text-xs font-bold rounded text-gray-400 hover:text-white transition-all">MANUAL</button>
@@ -31,14 +27,14 @@
 
     <div class="flex-grow overflow-y-auto pb-20">
         
-        <div id="main-bg" class="flex flex-col justify-center items-center py-8 px-4 text-center bg-gray-900 transition-colors duration-700 min-h-[40vh]">
-            <p class="text-xs uppercase tracking-widest mb-1 opacity-70">Status</p>
+        <div id="main-bg" class="flex flex-col justify-center items-center py-6 px-4 text-center bg-gray-900 transition-colors duration-700 min-h-[35vh]">
+            <p class="text-xs uppercase tracking-widest mb-1 opacity-70">Current Status</p>
             <h2 id="status-text" class="text-4xl font-black mb-1">WAITING</h2>
-            <p id="sub-text" class="text-sm text-gray-300 mb-6">Checking Position...</p>
+            <p id="sub-text" class="text-sm text-gray-300 mb-4">Initializing...</p>
             
             <div class="grid grid-cols-2 gap-2 w-full max-w-xs">
                 <div class="bg-black/30 p-2 rounded border border-white/10">
-                    <p class="text-[10px] text-gray-400 uppercase">Altitude (ft)</p>
+                    <p class="text-[10px] text-gray-400 uppercase">Altitude</p>
                     <p id="disp-alt" class="text-lg font-mono text-blue-300">---</p>
                 </div>
                 <div class="bg-black/30 p-2 rounded border border-white/10">
@@ -49,51 +45,54 @@
         </div>
 
         <div id="input-panel" class="bg-gray-800 p-4 border-t border-gray-700">
-            <div class="flex items-center gap-2 mb-3">
-                <span class="text-xs font-bold text-blue-400 uppercase">Flight Data Input</span>
-                <span id="mode-badge" class="text-[10px] px-1 rounded bg-gray-600 text-gray-300">READ-ONLY (GPS)</span>
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-bold text-blue-400 uppercase">Current Position</span>
+                <span id="mode-badge" class="text-[10px] px-1 rounded bg-green-900 text-green-300">GPS LIVE</span>
             </div>
 
-            <div class="grid grid-cols-2 gap-3 mb-3">
-                <div>
-                    <label class="text-[10px] text-gray-500 block">Latitude (Dec)</label>
-                    <input type="number" id="inp-lat" class="w-full bg-gray-900 border border-gray-600 p-2 rounded text-sm font-mono focus:border-blue-500 outline-none" placeholder="3.14">
-                </div>
-                <div>
-                    <label class="text-[10px] text-gray-500 block">Longitude (Dec)</label>
-                    <input type="number" id="inp-lon" class="w-full bg-gray-900 border border-gray-600 p-2 rounded text-sm font-mono focus:border-blue-500 outline-none" placeholder="101.68">
-                </div>
+            <div class="grid grid-cols-2 gap-2 mb-2">
+                <input type="text" id="inp-lat" class="bg-gray-900 border border-gray-600 p-2 rounded text-sm font-mono uppercase" placeholder="Lat (N03 15)">
+                <input type="text" id="inp-lon" class="bg-gray-900 border border-gray-600 p-2 rounded text-sm font-mono uppercase" placeholder="Lon (E101 30)">
+            </div>
+            
+            <div class="grid grid-cols-3 gap-2 mb-3">
+                <input type="number" id="inp-alt" class="bg-gray-900 border border-gray-600 p-2 rounded text-sm font-mono" placeholder="Alt (ft)">
+                <input type="number" id="inp-spd" class="bg-gray-900 border border-gray-600 p-2 rounded text-sm font-mono" placeholder="GS (kts)">
+                <input type="number" id="inp-trk" class="bg-gray-900 border border-gray-600 p-2 rounded text-sm font-mono" placeholder="Trk (deg)">
             </div>
 
-            <div class="grid grid-cols-3 gap-3 mb-4">
-                <div>
-                    <label class="text-[10px] text-gray-500 block">Altitude (ft)</label>
-                    <input type="number" id="inp-alt" class="w-full bg-gray-900 border border-gray-600 p-2 rounded text-sm font-mono focus:border-blue-500 outline-none" placeholder="35000">
-                </div>
-                <div>
-                    <label class="text-[10px] text-gray-500 block">GS (Kts)</label>
-                    <input type="number" id="inp-spd" class="w-full bg-gray-900 border border-gray-600 p-2 rounded text-sm font-mono focus:border-blue-500 outline-none" placeholder="480">
-                </div>
-                <div>
-                    <label class="text-[10px] text-gray-500 block">Track (True)</label>
-                    <input type="number" id="inp-trk" class="w-full bg-gray-900 border border-gray-600 p-2 rounded text-sm font-mono focus:border-blue-500 outline-none" placeholder="270">
-                </div>
-            </div>
-
-            <button onclick="runManualUpdate()" id="btn-calc" class="w-full bg-blue-700 hover:bg-blue-600 text-white font-bold py-3 rounded text-sm transition-colors hidden">
-                UPDATE CALCULATION
+            <button onclick="runManualUpdate()" id="btn-calc" class="w-full bg-blue-700 hover:bg-blue-600 text-white font-bold py-2 rounded text-sm hidden mb-4">
+                UPDATE POSITION
             </button>
-        </div>
 
-        <div class="p-4">
-            <div class="bg-gray-900 rounded border border-gray-700 p-3">
+            <div class="border-t border-gray-700 pt-3 mt-1">
                 <div class="flex justify-between items-center mb-2">
-                    <h3 class="text-xs font-bold text-purple-400">NEXT EVENT PREDICTION</h3>
-                    <div id="utc-clock" class="text-xs font-mono text-gray-500">00:00 Z</div>
+                    <h3 class="text-xs font-bold text-purple-400">PREDICTION SETTINGS (MAX 2 HRS)</h3>
                 </div>
-                <div id="pred-result" class="text-xl font-mono font-bold text-white text-center py-2">---</div>
-                <p id="pred-detail" class="text-[10px] text-gray-500 text-center">Based on inputs above</p>
-                <button onclick="runPrediction()" class="mt-2 w-full py-2 rounded border border-gray-600 text-xs text-gray-400 hover:bg-gray-800">Refresh Prediction</button>
+                
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <div>
+                        <label class="text-[10px] text-gray-500 block">Mins to Turn/Wpt</label>
+                        <input type="number" id="inp-time" class="w-full bg-gray-700 text-white p-2 rounded font-mono border border-gray-600 focus:border-purple-500" value="120">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-gray-500 block">Vertical Spd (fpm)</label>
+                        <input type="number" id="inp-vs" class="w-full bg-gray-700 text-white p-2 rounded font-mono border border-gray-600 focus:border-purple-500" placeholder="-1500">
+                    </div>
+                </div>
+
+                <div class="bg-gray-900 rounded border border-gray-600 p-3 text-center">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-[10px] text-gray-500">RESULT</span>
+                        <span id="utc-clock" class="text-[10px] font-mono text-gray-400">00:00 Z</span>
+                    </div>
+                    <div id="pred-result" class="text-xl font-mono font-bold text-white py-1">---</div>
+                    <p id="pred-detail" class="text-[10px] text-gray-500">Ready to calculate</p>
+                </div>
+                
+                <button onclick="runPrediction()" class="mt-2 w-full py-2 rounded border border-gray-600 text-xs text-gray-300 hover:bg-gray-800">
+                    Run Prediction for Leg
+                </button>
             </div>
         </div>
     </div>
@@ -105,27 +104,25 @@
         const R_EARTH = 6371e3;
 
         // STATE
-        let mode = 'GPS'; // 'GPS' or 'MANUAL'
-        let state = {
-            lat: 0, lon: 0, alt: 0,
-            spd: 0, trk: 0,
-            status: 'WAITING'
-        };
+        let mode = 'GPS'; 
+        let state = { lat: 0, lon: 0, alt: 0, spd: 0, trk: 0, status: 'WAITING' };
 
-        // DOM ELEMENTS
+        // DOM
         const el = {
             lat: document.getElementById('inp-lat'),
             lon: document.getElementById('inp-lon'),
             alt: document.getElementById('inp-alt'),
             spd: document.getElementById('inp-spd'),
             trk: document.getElementById('inp-trk'),
+            time: document.getElementById('inp-time'), // Duration limit
+            vs: document.getElementById('inp-vs'),     // Vertical Speed
             badge: document.getElementById('mode-badge'),
             calcBtn: document.getElementById('btn-calc'),
             gpsBtn: document.getElementById('btn-gps'),
             manBtn: document.getElementById('btn-man')
         };
 
-        // --- UTILS ---
+        // --- MATH ---
         function toRad(deg) { return deg * Math.PI / 180; }
         function toDeg(rad) { return rad * 180 / Math.PI; }
         
@@ -147,20 +144,32 @@
             return [toDeg(lat2), toDeg(lon2)];
         }
 
-        // --- UI LOGIC ---
+        function parseCoord(input) {
+            if (!input) return 0;
+            let str = input.toString().trim().toUpperCase();
+            let multiplier = (str.includes('S') || str.includes('W')) ? -1 : 1;
+            let cleanStr = str.replace(/[NSEW]/g, '').trim();
+            if (cleanStr.includes(' ')) {
+                let parts = cleanStr.split(/\s+/);
+                return (parseFloat(parts[0]) + (parseFloat(parts[1]) / 60)) * multiplier;
+            }
+            return parseFloat(cleanStr) * multiplier;
+        }
+
+        // --- UI MODE ---
         function setMode(newMode) {
             mode = newMode;
             if (mode === 'GPS') {
                 el.gpsBtn.className = "px-3 py-1 text-xs font-bold rounded bg-blue-600 text-white shadow";
                 el.manBtn.className = "px-3 py-1 text-xs font-bold rounded text-gray-400 hover:text-white";
-                el.badge.innerText = "READ-ONLY (GPS)";
+                el.badge.innerText = "GPS LIVE";
                 el.badge.className = "text-[10px] px-1 rounded bg-green-900 text-green-300";
                 el.calcBtn.classList.add('hidden');
                 disableInputs(true);
             } else {
                 el.gpsBtn.className = "px-3 py-1 text-xs font-bold rounded text-gray-400 hover:text-white";
                 el.manBtn.className = "px-3 py-1 text-xs font-bold rounded bg-blue-600 text-white shadow";
-                el.badge.innerText = "EDITABLE";
+                el.badge.innerText = "MANUAL";
                 el.badge.className = "text-[10px] px-1 rounded bg-blue-900 text-blue-300";
                 el.calcBtn.classList.remove('hidden');
                 disableInputs(false);
@@ -168,6 +177,7 @@
         }
 
         function disableInputs(disabled) {
+            // Only disable position inputs, keep Prediction Settings active
             [el.lat, el.lon, el.alt, el.spd, el.trk].forEach(i => {
                 i.disabled = disabled;
                 i.style.opacity = disabled ? 0.6 : 1;
@@ -175,99 +185,110 @@
         }
 
         function runManualUpdate() {
-            // Read inputs to state
-            state.lat = parseFloat(el.lat.value) || 0;
-            state.lon = parseFloat(el.lon.value) || 0;
+            state.lat = parseCoord(el.lat.value);
+            state.lon = parseCoord(el.lon.value);
             state.alt = parseFloat(el.alt.value) || 0;
             state.spd = parseFloat(el.spd.value) || 0;
             state.trk = parseFloat(el.trk.value) || 0;
-            
             updateDisplay();
-            runPrediction(); // Auto predict on manual update
+            runPrediction();
         }
 
-        // --- CORE CALC ---
+        // --- CORE STATUS ---
         function updateDisplay() {
-            // Clock
             const now = new Date();
             document.getElementById('utc-clock').innerText = 
                 now.getUTCHours().toString().padStart(2,'0') + ":" + 
                 now.getUTCMinutes().toString().padStart(2,'0') + " Z";
 
-            // Sun Math
             const sunPos = SunCalc.getPosition(now, state.lat, state.lon);
             const sunDeg = toDeg(sunPos.altitude);
             const dip = calculateDip(state.alt);
 
-            const iftarLim = -(SUN_REFRACT + dip); // Sunset
-            const sahurLim = -(JAKIM_FAJR + dip);  // Dawn
+            const iftarLim = -(SUN_REFRACT + dip);
+            const sahurLim = -(JAKIM_FAJR + dip);
 
-            // Update UI Text
             document.getElementById('disp-alt').innerText = Math.round(state.alt);
             document.getElementById('disp-sun').innerText = sunDeg.toFixed(2) + "°";
 
+            const bg = document.getElementById('main-bg');
             const statusText = document.getElementById('status-text');
             const subText = document.getElementById('sub-text');
-            const bg = document.getElementById('main-bg');
 
-            // STATUS LOGIC
             if (sunDeg > iftarLim) {
-                // DAY
                 state.status = 'DAY';
-                bg.className = "flex flex-col justify-center items-center py-8 px-4 text-center bg-red-900 transition-colors duration-500 min-h-[40vh]";
+                bg.className = "flex flex-col justify-center items-center py-6 px-4 text-center bg-red-900 transition-colors duration-500 min-h-[35vh]";
                 statusText.innerText = "FASTING";
-                subText.innerText = `Sun is visible (${(sunDeg - iftarLim).toFixed(1)}° above horizon)`;
+                subText.innerText = `Sun is ${(sunDeg - iftarLim).toFixed(1)}° above horizon`;
             } else if (sunDeg < sahurLim) {
-                // NIGHT
                 state.status = 'NIGHT';
-                bg.className = "flex flex-col justify-center items-center py-8 px-4 text-center bg-green-900 transition-colors duration-500 min-h-[40vh]";
+                bg.className = "flex flex-col justify-center items-center py-6 px-4 text-center bg-green-900 transition-colors duration-500 min-h-[35vh]";
                 statusText.innerText = "NIGHT";
                 subText.innerText = "Safe to eat/drink";
             } else {
-                // TRANSITION
                 state.status = 'TRANSITION';
-                bg.className = "flex flex-col justify-center items-center py-8 px-4 text-center bg-yellow-700 transition-colors duration-500 min-h-[40vh]";
+                bg.className = "flex flex-col justify-center items-center py-6 px-4 text-center bg-yellow-700 transition-colors duration-500 min-h-[35vh]";
                 statusText.innerText = "WARNING";
-                subText.innerText = "Twilight Zone (Verify Visually)";
+                subText.innerText = "Twilight Zone";
             }
         }
 
+        // --- PREDICTION ENGINE (WITH LIMITS) ---
         function runPrediction() {
             const resDiv = document.getElementById('pred-result');
+            const detDiv = document.getElementById('pred-detail');
             resDiv.innerText = "...";
+
+            // User Inputs for Prediction
+            const timeLimitMins = parseInt(el.time.value) || 120; // Default 2 hours
+            const verticalSpeed = parseInt(el.vs.value) || 0;     // Default 0 fpm
             
+            // Cap at 2 hours (120 mins) as per requirement
+            const maxMins = Math.min(timeLimitMins, 120);
+
             setTimeout(() => {
                 let simTime = new Date();
                 let simLat = state.lat;
                 let simLon = state.lon;
-                
-                // If speed is 0, we can't predict movement, just static time
-                const isMoving = state.spd > 10;
-                const stepMin = isMoving ? 2 : 1; 
-                const metersPerStep = (state.spd * 1852) * (stepMin / 60); 
+                let simAlt = state.alt;
 
-                const dip = calculateDip(state.alt);
-                const iftarLim = -(SUN_REFRACT + dip);
-                const sahurLim = -(JAKIM_FAJR + dip);
+                const isMoving = state.spd > 10;
+                const stepMin = isMoving ? 1 : 1; 
+                // Distance per minute
+                const metersPerStep = (state.spd * 1852) * (stepMin / 60); 
 
                 let found = false;
                 let label = "";
 
-                for (let i=0; i<720; i++) { // Look ahead 24h max
+                // Look ahead loop
+                for (let i = 0; i <= maxMins; i += stepMin) {
+                    
+                    // 1. Move Time
                     simTime.setMinutes(simTime.getMinutes() + stepMin);
                     
+                    // 2. Move Plane (Horizontal)
                     if (isMoving) {
                         const newPos = calculateDest(simLat, simLon, metersPerStep, state.trk);
                         simLat = newPos[0];
                         simLon = newPos[1];
                     }
 
+                    // 3. Move Plane (Vertical)
+                    // If descending (-1500 fpm), alt decreases
+                    simAlt += (verticalSpeed * stepMin); 
+                    if (simAlt < 0) simAlt = 0;
+
+                    // 4. Calculate Sun with new Alt
+                    const dip = calculateDip(simAlt);
+                    const iftarLim = -(SUN_REFRACT + dip);
+                    const sahurLim = -(JAKIM_FAJR + dip);
+                    
                     const sPos = SunCalc.getPosition(simTime, simLat, simLon);
                     const sDeg = toDeg(sPos.altitude);
 
-                    // LOGIC: Find next CROSSING
+                    // 5. Check Thresholds
                     if (state.status === 'DAY') {
-                        // Looking for Sunset
+                        // Looking for IFTAR (Sunset)
                         if (sDeg < iftarLim) {
                             simTime.setMinutes(simTime.getMinutes() + 2); // Safety Buffer
                             label = "IFTAR";
@@ -275,7 +296,7 @@
                             break;
                         }
                     } else {
-                        // Looking for Dawn/Sunrise
+                        // Looking for SAHUR (Dawn)
                         if (sDeg > sahurLim) {
                             simTime.setMinutes(simTime.getMinutes() - 2); // Safety Buffer
                             label = "SAHUR ENDS";
@@ -289,23 +310,22 @@
                     const utc = simTime.getUTCHours().toString().padStart(2,'0') + ":" + 
                                 simTime.getUTCMinutes().toString().padStart(2,'0') + " Z";
                     resDiv.innerText = `${label}: ${utc}`;
-                    document.getElementById('pred-detail').innerText = isMoving ? 
-                        `At FL${Math.round(state.alt/100)} / ${state.spd}kts` : "Stationary Calculation";
+                    detDiv.innerText = `Event found within ${maxMins} min leg`;
                 } else {
-                    resDiv.innerText = "NO CHANGE";
+                    resDiv.innerText = "NO EVENT";
+                    detDiv.innerText = `Status will not change in next ${maxMins} mins on this track.`;
                 }
-            }, 10);
+            }, 50);
         }
 
-        // --- GPS HANDLER ---
+        // --- GPS ---
         navigator.geolocation.watchPosition(pos => {
-            if (mode === 'MANUAL') return; // Don't overwrite if manual
-
+            if (mode === 'MANUAL') return;
             state.lat = pos.coords.latitude;
             state.lon = pos.coords.longitude;
             state.alt = pos.coords.altitude ? (pos.coords.altitude * 3.28084) : 0;
             
-            // Populate Inputs for reference
+            // Fill inputs for visual
             el.lat.value = state.lat.toFixed(4);
             el.lon.value = state.lon.toFixed(4);
             el.alt.value = Math.round(state.alt);
@@ -318,16 +338,11 @@
                 state.trk = Math.round(pos.coords.heading);
                 el.trk.value = state.trk;
             }
-
             updateDisplay();
-            // GPS updates prediction every time position changes? Maybe too heavy. 
-            // Let's only run prediction if it's been a while or manually triggered.
-            // For now, just update Status.
         }, err => console.log(err), { enableHighAccuracy: true });
 
-        // Timer
         setInterval(updateDisplay, 1000);
-        disableInputs(true); // Init state
+        disableInputs(true);
 
     </script>
 </body>
